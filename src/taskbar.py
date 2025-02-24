@@ -1,19 +1,16 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy
 from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
+from src.terminal import TerminalButton
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        # Active la transparence de la fenêtre pour permettre un fond translucide
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        
-        # Le style définit ici un fond sombre avec une opacité de 85%
         self.setStyleSheet("""
             TaskBar {
-                background-color: rgba(34, 34, 34, 0.85);
+                background-color: rgba(34, 34, 34, 0.85); /* Fond unifié */
             }
         """)
 
@@ -24,22 +21,27 @@ class TaskBar(QWidget):
         layout.setSpacing(15)
 
         self.start_button = StartButton()
-        layout.addWidget(self.start_button, alignment=Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self.start_button)
 
         self.file_explorer_button = FileExplorerButton(self)
-        layout.addWidget(self.file_explorer_button, alignment=Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self.file_explorer_button)
 
-        layout.addStretch()
+        self.terminal_button = TerminalButton(self)
+        layout.addWidget(self.terminal_button)
+
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        layout.addWidget(spacer)
 
         self.clock_label = QLabel()
-        self.clock_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.clock_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.clock_label.setStyleSheet("font-size: 16px; padding-right: 10px; color: white;")
-        layout.addWidget(self.clock_label, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_time)
         self.timer.start(1000)
         self.update_time()
+        layout.addWidget(self.clock_label)
 
         self.setLayout(layout)
 
@@ -50,6 +52,6 @@ class TaskBar(QWidget):
         self.clock_label.setText(current_time.toString("HH:mm:ss"))
 
     def resizeEvent(self, event):
-        """Ajuste la largeur de la barre des tâches lors du redimensionnement de la fenêtre."""
+        """ Ajuste la largeur de la barre des tâches lors du redimensionnement de la fenêtre. """
         self.setGeometry(0, self.parent().height() - 50, self.parent().width(), 50)
         super().resizeEvent(event)
