@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePoli
 from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
+from src.terminal import TerminalButton
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
@@ -22,8 +23,11 @@ class TaskBar(QWidget):
         self.start_button = StartButton()
         layout.addWidget(self.start_button)
 
-        self.file_explorer_button = FileExplorerButton(self)  # 📌 Assure-toi que le parent est bien `self`
+        self.file_explorer_button = FileExplorerButton(self)
         layout.addWidget(self.file_explorer_button)
+
+        self.terminal_button = TerminalButton(self)
+        layout.addWidget(self.terminal_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -42,9 +46,10 @@ class TaskBar(QWidget):
         self.setLayout(layout)
 
     def update_time(self):
-        """ Met à jour l'horloge de la barre des tâches. """
-        current_time = QTime.currentTime().toString("HH:mm:ss")
-        self.clock_label.setText(current_time)
+        """Met à jour l'horloge de la barre des tâches en ajoutant 1 heure."""
+        # Récupère l'heure actuelle et ajoute 3600 secondes (1 heure)
+        current_time = QTime.currentTime().addSecs(3600)
+        self.clock_label.setText(current_time.toString("HH:mm:ss"))
 
     def resizeEvent(self, event):
         """ Ajuste la largeur de la barre des tâches lors du redimensionnement de la fenêtre. """
