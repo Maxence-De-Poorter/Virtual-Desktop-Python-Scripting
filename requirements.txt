@@ -1,3 +1,7 @@
 PyQt6==6.8.0
 PyQt6-Qt6==6.8.1
 PyQt6_sip==13.10.0
+asgiref==3.8.1
+django==5.1.6
+sqlparse==0.5.3
+tzdata==2025.1

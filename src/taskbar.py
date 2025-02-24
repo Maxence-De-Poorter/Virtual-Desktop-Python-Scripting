@@ -2,11 +2,12 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePoli
 from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
+from src.agenda import AgendaButton  # Importe le bouton de l'agenda
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
         self.setStyleSheet("""
             TaskBar {
                 background-color: rgba(34, 34, 34, 0.85); /* Fond unifié */
@@ -24,6 +25,9 @@ class TaskBar(QWidget):
 
         self.file_explorer_button = FileExplorerButton(self)  # 📌 Assure-toi que le parent est bien `self`
         layout.addWidget(self.file_explorer_button)
+
+        self.agenda_button = AgendaButton(self)  # Ajoute le bouton de l'agenda
+        layout.addWidget(self.agenda_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)

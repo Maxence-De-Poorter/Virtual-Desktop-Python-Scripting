@@ -18,7 +18,7 @@ myenv\Scripts\activate
 ```
 4. Installer les dépendances.
 ```bash
-pip install PyQt6
+pip install -r requirements.txt
 ```
 5. Exécuter le projet.
 ```bash
