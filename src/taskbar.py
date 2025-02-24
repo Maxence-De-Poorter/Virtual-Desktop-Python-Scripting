@@ -1,8 +1,9 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QPushButton
 from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
-from src.agenda import AgendaButton  # Importe le bouton de l'agenda
+from src.agenda import AgendaButton
+from src.notes import NotesButton  # Importe le bouton des notes
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
@@ -23,11 +24,14 @@ class TaskBar(QWidget):
         self.start_button = StartButton()
         layout.addWidget(self.start_button)
 
-        self.file_explorer_button = FileExplorerButton(self)  # 📌 Assure-toi que le parent est bien `self`
+        self.file_explorer_button = FileExplorerButton(self)
         layout.addWidget(self.file_explorer_button)
 
-        self.agenda_button = AgendaButton(self)  # Ajoute le bouton de l'agenda
+        self.agenda_button = AgendaButton(self)
         layout.addWidget(self.agenda_button)
+
+        self.notes_button = NotesButton(self)  # Ajoute le bouton des notes
+        layout.addWidget(self.notes_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
