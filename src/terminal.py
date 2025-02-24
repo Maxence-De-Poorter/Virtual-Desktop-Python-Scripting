@@ -62,9 +62,7 @@ class TerminalWidget(QWidget):
         # Bouton de fermeture (croix)
         self.close_button = QPushButton("❌", self.title_bar)
         self.close_button.setFixedSize(30, 30)
-        self.close_button.setStyleSheet(
-            "border: none; background: transparent; color: white; font-size: 16px;"
-        )
+        self.close_button.setStyleSheet("border: none; background: transparent; color: white; font-size: 16px;")
         self.close_button.clicked.connect(self.close)
         self.title_layout.addWidget(self.close_button)
         
@@ -90,8 +88,9 @@ class TerminalWidget(QWidget):
         
         # Initialisation de QProcess pour lancer l'invite de commande Windows
         self.process = QProcess(self)
+        # Fusionner stdout et stderr pour une lecture simplifiée
+        self.process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
-        self.process.readyReadStandardError.connect(self.handle_stderr)
         self.process.start("cmd.exe")
         
     def execute_command(self):
@@ -100,6 +99,17 @@ class TerminalWidget(QWidget):
         if command:
             # Affiche la commande dans la zone de sortie pour simuler l'invite
             self.output_area.appendPlainText(f"> {command}")
+            # Si la commande est 'exit', on ferme le terminal
+            if command.lower() == "exit":
+                self.close()
+                return
+            # Traitement de la commande echo : affiche le texte directement
+            elif command.lower().startswith("echo"):
+                parts = command.split(" ", 1)
+                echo_text = parts[1] if len(parts) > 1 else ""
+                self.output_area.appendPlainText(echo_text)
+                self.input_line.clear()
+                return
             # Envoie la commande au process suivie d'un saut de ligne
             self.process.write((command + "\n").encode("utf-8"))
             self.input_line.clear()
