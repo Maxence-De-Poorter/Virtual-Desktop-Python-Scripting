@@ -1,0 +1,13 @@
+<!-- templates/add_note.html -->
+
+<h1>Ajouter une note</h1>
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="title">Titre de la note:</label>
+        <input type="text" name="title" class="form-control" required>
+        <label for="content">Contenu de la note:</label>
+        <textarea name="content" class="form-control" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Ajouter</button>
+</form>

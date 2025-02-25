@@ -1,0 +1,12 @@
+<!-- templates/note_list.html -->
+
+<h1>Liste des notes</h1>
+<ul>
+    {% for note in notes %}
+        <li>
+            <strong>{{ note.title }}</strong>: {{ note.content }}
+            <a href="{% url 'delete_note' note.id %}">Supprimer</a>
+        </li>
+    {% endfor %}
+</ul>
+<a href="{% url 'add_note' %}">Ajouter une note</a>

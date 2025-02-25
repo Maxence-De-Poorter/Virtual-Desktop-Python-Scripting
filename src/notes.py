@@ -1,4 +1,5 @@
 import sys
+import sqlite3
 from PyQt6.QtWidgets import (
     QApplication, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QListWidget, QDialog,
@@ -55,6 +56,10 @@ class NoteWindow(QWidget):
         self.setWindowTitle("Prise de Notes")
         self.setStyleSheet("background-color: #f0f0f0;")  # Fond gris pour la fenêtre de notes
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)  # Supprime les bordures de la fenêtre
+
+        # Initialisation de la base de données SQLite
+        self.conn = sqlite3.connect('notes.db')
+        self.create_table()  # Crée la table avec la colonne title définie comme UNIQUE
 
         # Layout principal
         self.main_layout = QVBoxLayout(self)
@@ -170,8 +175,10 @@ class NoteWindow(QWidget):
         self.content_layout.addWidget(self.notes_list_widget)
 
         # Contenu de la note à droite
+        self.note_content_container = QWidget(self)
+        self.note_content_layout = QVBoxLayout(self.note_content_container)
+
         self.note_content = QTextEdit(self)
-        self.note_content.setReadOnly(True)  # Désactiver l'édition par défaut
         self.note_content.setStyleSheet("""
             QTextEdit {
                 background: #ffffff;
@@ -182,8 +189,30 @@ class NoteWindow(QWidget):
                 border-radius: 5px;
             }
         """)
-        self.note_content.textChanged.connect(self.save_note_content)
-        self.content_layout.addWidget(self.note_content)
+        self.note_content_layout.addWidget(self.note_content)
+
+        # Bouton pour enregistrer la note
+        self.save_button = QPushButton("Enregistrer la Note")
+        self.save_button.setStyleSheet("""
+            QPushButton {
+                background-color: #007BFF;
+                color: white;
+                font-size: 16px;
+                border: none;
+                border-radius: 10px;
+                padding: 10px 20px;
+                margin: 5px;
+            }
+            QPushButton:hover {
+                background-color: #005bb5;
+            }
+        """)
+        self.save_button.clicked.connect(self.save_note_content)
+
+        # Ajouter le bouton en bas de la zone de texte
+        self.note_content_layout.addWidget(self.save_button)
+
+        self.content_layout.addWidget(self.note_content_container)
 
         # Ajustement de la largeur des colonnes
         self.content_layout.setStretch(0, 1)  # Liste des notes
@@ -197,10 +226,105 @@ class NoteWindow(QWidget):
 
         self.setLayout(self.main_layout)
         self.center_in_bureau()
+        self.load_notes_from_db()
 
         # Variables pour le déplacement de la fenêtre
         self._drag_start_position = None
         self._drag_offset = None
+
+    def create_table(self):
+        """Crée la table des notes dans la base de données."""
+        with self.conn:
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL UNIQUE,
+                    content TEXT NOT NULL
+                )
+            ''')
+
+    def load_notes_from_db(self):
+        """Charge les notes depuis la base de données."""
+        with self.conn:
+            cursor = self.conn.execute("SELECT title, content FROM notes")
+            for row in cursor:
+                self.notes[row[0]] = row[1]
+                self.notes_list.addItem(row[0])
+
+    def save_note_content(self):
+        """Enregistrer le contenu de la note actuellement affichée."""
+        if self.current_note:
+            self.notes[self.current_note] = self.note_content.toPlainText()
+            self.save_note_to_db(self.current_note, self.note_content.toPlainText())
+
+    def save_note_to_db(self, title, content):
+        """Enregistre une note dans la base de données."""
+        with self.conn:
+            self.conn.execute("""
+                INSERT INTO notes (title, content)
+                VALUES (?, ?)
+                ON CONFLICT(title) DO UPDATE SET content=excluded.content
+            """, (title, content))
+
+    def add_note(self):
+        """Ajouter une nouvelle note avec une boîte de dialogue personnalisée."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Ajouter une Note")
+        dialog.setStyleSheet("background-color: #f0f0f0; color: black;")
+
+        layout = QVBoxLayout(dialog)
+        label = QLabel("Titre de la note:", dialog)
+        label.setStyleSheet("color: black;")
+        layout.addWidget(label)
+
+        title_field = QLineEdit(dialog)
+        title_field.setStyleSheet("background-color: #ffffff; color: black;")
+        layout.addWidget(title_field)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, dialog)
+        layout.addWidget(buttons)
+
+        def on_accept():
+            title = title_field.text()
+            if title:
+                self.notes[title] = ""
+                self.notes_list.addItem(title)
+                self.save_note_to_db(title, "")
+            dialog.accept()
+
+        def on_reject():
+            dialog.reject()
+
+        buttons.accepted.connect(on_accept)
+        buttons.rejected.connect(on_reject)
+
+        dialog.exec()
+
+    def remove_note(self):
+        """Supprimer la note sélectionnée de la liste."""
+        selected_items = self.notes_list.selectedItems()
+        if selected_items:
+            for item in selected_items:
+                note_title = item.text()
+                if note_title in self.notes:
+                    del self.notes[note_title]
+                    self.delete_note_from_db(note_title)
+                self.notes_list.takeItem(self.notes_list.row(item))
+                self.note_content.clear()
+                self.note_content.setReadOnly(True)
+                self.current_note = None
+
+    def delete_note_from_db(self, title):
+        """Supprime une note de la base de données."""
+        with self.conn:
+            self.conn.execute("DELETE FROM notes WHERE title=?", (title,))
+
+    def show_note_content(self, item):
+        """Afficher le contenu de la note sélectionnée."""
+        note_title = item.text()
+        self.current_note = note_title
+        self.note_content.setReadOnly(False)  # Activer l'édition
+        self.note_content.setText(self.notes.get(note_title, ""))
 
     def center_in_bureau(self):
         """Centre la fenêtre dans le bureau virtuel."""
@@ -226,83 +350,7 @@ class NoteWindow(QWidget):
         self._drag_start_position = None
         self._drag_offset = None
 
-    def add_note(self):
-        """Ajouter une nouvelle note avec une boîte de dialogue personnalisée."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Ajouter une Note")
-        dialog.setStyleSheet("background-color: #f0f0f0; color: black;")
-
-        layout = QVBoxLayout(dialog)
-        label = QLabel("Titre de la note:", dialog)
-        label.setStyleSheet("color: black;")
-        layout.addWidget(label)
-
-        title_field = QLineEdit(dialog)
-        title_field.setStyleSheet("background-color: #ffffff; color: black;")
-        layout.addWidget(title_field)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, dialog)
-        layout.addWidget(buttons)
-
-        def on_accept():
-            title = title_field.text()
-            if title:
-                self.notes[title] = ""
-                self.notes_list.addItem(title)
-            dialog.accept()
-
-        def on_reject():
-            dialog.reject()
-
-        buttons.accepted.connect(on_accept)
-        buttons.rejected.connect(on_reject)
-
-        dialog.exec()
-
-    def save_note_content(self):
-        """Enregistrer le contenu de la note actuellement affichée."""
-        if self.current_note:
-            self.notes[self.current_note] = self.note_content.toPlainText()
-
-    def remove_note(self):
-        """Supprimer la note sélectionnée de la liste."""
-        selected_items = self.notes_list.selectedItems()
-        if selected_items:
-            for item in selected_items:
-                note_title = item.text()
-                if note_title in self.notes:
-                    del self.notes[note_title]
-                self.notes_list.takeItem(self.notes_list.row(item))
-                self.note_content.clear()
-                self.note_content.setReadOnly(True)
-                self.current_note = None
-
-    def show_note_content(self, item):
-        """Afficher le contenu de la note sélectionnée."""
-        note_title = item.text()
-        self.current_note = note_title
-        self.note_content.setReadOnly(False)  # Activer l'édition
-        self.note_content.setText(self.notes.get(note_title, ""))
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Environnement Principal")
-        self.resize(1000, 800)
-        self.setStyleSheet("background-color: #f0f0f0;")  # Fond gris pour la fenêtre principale
-
-        # Ajouter le bouton de notes à la fenêtre principale
-        self.notes_button = NotesButton(self)
-        self.setCentralWidget(self.notes_button)
-
-    def resizeEvent(self, event):
-        """Ajuste la taille de la fenêtre de notes lorsque la fenêtre principale est redimensionnée."""
-        if hasattr(self, 'note_window'):
-            self.notes_button.adjust_note_window_size(self.note_window)
-        super().resizeEvent(event)
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec())
+    def closeEvent(self, event):
+        """Ferme la connexion à la base de données lorsque la fenêtre est fermée."""
+        self.conn.close()
+        super().closeEvent(event)
