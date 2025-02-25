@@ -1,11 +1,11 @@
 import sys
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
+    QApplication, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QListWidget, QDialog,
-    QFormLayout, QLineEdit, QDialogButtonBox, QMessageBox, QMenu, QFrame, QToolTip, QWidget, QLabel
+    QLabel, QLineEdit, QDialogButtonBox, QWidget, QMainWindow
 )
-from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import Qt, QDateTime, QDate, QSize
+from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt, QSize, QPoint
 import os
 
 class NotesButton(QPushButton):
@@ -28,37 +28,53 @@ class NotesButton(QPushButton):
         self.clicked.connect(self.open_notes)
 
     def open_notes(self):
-        """Ouvre une nouvelle instance de la fenêtre de notes."""
-        print("[DEBUG] Ouverture de Notes.")
+        """Ouvre une nouvelle instance de la fenêtre de notes ou ferme l'application si déjà ouverte."""
         parent_window = self.window()
 
-        if not hasattr(parent_window, "open_windows"):
-            parent_window.open_windows = []
+        if hasattr(parent_window, 'note_window') and parent_window.note_window.isVisible():
+            # Ferme uniquement la fenêtre de notes
+            parent_window.note_window.close()
+        else:
+            # Crée une nouvelle instance si aucune n'est ouverte
+            parent_window.note_window = NoteWindow(parent_window)
+            parent_window.note_window.show()
+            self.adjust_note_window_size(parent_window.note_window)
 
-        note = NoteWindow(parent_window)
-        parent_window.open_windows.append(note)
-        note.show()
+    def adjust_note_window_size(self, note_window):
+        """Ajuste la taille de la fenêtre de notes en fonction de la taille de l'environnement parent."""
+        parent_window = self.window()
+        note_window.resize(parent_window.size() * 0.8)
+        note_window.move(
+            int(parent_window.x() + parent_window.width() * 0.1),
+            int(parent_window.y() + parent_window.height() * 0.1)
+        )
 
 class NoteWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Prise de Notes")
-        self.resize(800, 600)
+        self.setStyleSheet("background-color: #f0f0f0;")  # Fond gris pour la fenêtre de notes
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)  # Supprime les bordures de la fenêtre
 
         # Layout principal
         self.main_layout = QVBoxLayout(self)
 
+        # Widget conteneur pour la barre de titre
+        self.title_bar_container = QWidget(self)
+        self.title_bar_container.setStyleSheet("background-color: #e0e0e0;")  # Rendre la barre de titre opaque
+        self.title_bar_container.setLayout(QHBoxLayout())
+
         # Barre de titre avec bouton Fermer
-        self.title_bar = QHBoxLayout()
+        self.title_bar = self.title_bar_container.layout()
         self.title_label = QLabel("📝 Prise de Notes", self)
-        self.title_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white;")
+        self.title_label.setStyleSheet("font-weight: bold; font-size: 18px; color: black;")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.close_button = QPushButton("❌")
         self.close_button.setFixedSize(40, 30)
         self.close_button.setStyleSheet("""
             QPushButton {
                 background: transparent;
-                color: white;
+                color: black;
                 font-size: 18px;
                 font-weight: bold;
                 border: none;
@@ -73,13 +89,27 @@ class NoteWindow(QWidget):
         self.title_bar.addWidget(self.title_label)
         self.title_bar.addStretch()
         self.title_bar.addWidget(self.close_button)
-        self.main_layout.addLayout(self.title_bar)
 
-        # Liste des notes
+        self.main_layout.addWidget(self.title_bar_container)
+
+        # Layout horizontal pour la liste des notes et le contenu de la note
+        self.content_layout = QHBoxLayout()
+
+        # Layout vertical pour la liste des notes et les boutons
+        self.notes_list_widget = QWidget(self)
+        self.notes_list_layout = QVBoxLayout(self.notes_list_widget)
+
+        # Titre au-dessus de la liste des notes
+        self.notes_title = QLabel("Liste des notes", self)
+        self.notes_title.setStyleSheet("font-weight: bold; font-size: 16px; color: black;")
+        self.notes_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.notes_list_layout.addWidget(self.notes_title)
+
+        # Liste des notes à gauche
         self.notes_list = QListWidget(self)
         self.notes_list.setStyleSheet("""
             QListWidget {
-                background: white;
+                background: #ffffff;
                 border: 1px solid #b0b0b0;
                 padding: 10px;
                 font-size: 14px;
@@ -87,6 +117,7 @@ class NoteWindow(QWidget):
             }
             QListWidget::item {
                 padding: 8px;
+                color: black;
             }
             QListWidget::item:selected {
                 background: #0078D7;
@@ -94,9 +125,10 @@ class NoteWindow(QWidget):
                 border-radius: 5px;
             }
         """)
-        self.main_layout.addWidget(self.notes_list)
+        self.notes_list.itemClicked.connect(self.show_note_content)
+        self.notes_list_layout.addWidget(self.notes_list)
 
-        # Boutons pour ajouter, modifier et supprimer des notes
+        # Boutons pour ajouter et supprimer des notes
         self.button_layout = QHBoxLayout()
         self.add_button = QPushButton("Ajouter Note")
         self.add_button.setStyleSheet("""
@@ -113,23 +145,7 @@ class NoteWindow(QWidget):
                 background-color: #45a049;
             }
         """)
-        self.add_button.clicked.connect(self.open_note_dialog)
-        self.modify_button = QPushButton("Modifier Note")
-        self.modify_button.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                font-size: 16px;
-                border: none;
-                border-radius: 10px;
-                padding: 10px 20px;
-                margin: 5px;
-            }
-            QPushButton:hover {
-                background-color: #1976d2;
-            }
-        """)
-        self.modify_button.clicked.connect(self.modify_note)
+        self.add_button.clicked.connect(self.add_note)
         self.remove_button = QPushButton("Supprimer Note")
         self.remove_button.setStyleSheet("""
             QPushButton {
@@ -147,20 +163,44 @@ class NoteWindow(QWidget):
         """)
         self.remove_button.clicked.connect(self.remove_note)
         self.button_layout.addWidget(self.add_button)
-        self.button_layout.addWidget(self.modify_button)
         self.button_layout.addWidget(self.remove_button)
         self.button_layout.addStretch()
-        self.main_layout.addLayout(self.button_layout)
+        self.notes_list_layout.addLayout(self.button_layout)
+
+        self.content_layout.addWidget(self.notes_list_widget)
+
+        # Contenu de la note à droite
+        self.note_content = QTextEdit(self)
+        self.note_content.setReadOnly(True)  # Désactiver l'édition par défaut
+        self.note_content.setStyleSheet("""
+            QTextEdit {
+                background: #ffffff;
+                color: #000000;
+                border: 1px solid #b0b0b0;
+                padding: 10px;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+        """)
+        self.note_content.textChanged.connect(self.save_note_content)
+        self.content_layout.addWidget(self.note_content)
+
+        # Ajustement de la largeur des colonnes
+        self.content_layout.setStretch(0, 1)  # Liste des notes
+        self.content_layout.setStretch(1, 9)  # Contenu de la note
+
+        self.main_layout.addLayout(self.content_layout)
 
         # Dictionnaire pour stocker les notes
         self.notes = {}
-
-        # Menu contextuel pour les notes
-        self.notes_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.notes_list.customContextMenuRequested.connect(self.show_context_menu)
+        self.current_note = None
 
         self.setLayout(self.main_layout)
         self.center_in_bureau()
+
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
 
     def center_in_bureau(self):
         """Centre la fenêtre dans le bureau virtuel."""
@@ -169,71 +209,100 @@ class NoteWindow(QWidget):
         y = (screen_geometry.height() - self.height()) // 2
         self.move(x, y)
 
-    def open_note_dialog(self):
-        """Ouvre un dialogue pour ajouter ou modifier une note."""
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar_container.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
+
+    def add_note(self):
+        """Ajouter une nouvelle note avec une boîte de dialogue personnalisée."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Ajouter/Modifier une Note")
-        dialog.setLayout(QFormLayout())
+        dialog.setWindowTitle("Ajouter une Note")
+        dialog.setStyleSheet("background-color: #f0f0f0; color: black;")
 
-        # Champs pour le titre et le contenu de la note
+        layout = QVBoxLayout(dialog)
+        label = QLabel("Titre de la note:", dialog)
+        label.setStyleSheet("color: black;")
+        layout.addWidget(label)
+
         title_field = QLineEdit(dialog)
-        content_field = QTextEdit(dialog)
-
-        dialog.layout().addRow("Titre:", title_field)
-        dialog.layout().addRow("Contenu:", content_field)
+        title_field.setStyleSheet("background-color: #ffffff; color: black;")
+        layout.addWidget(title_field)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, dialog)
-        dialog.layout().addWidget(buttons)
+        layout.addWidget(buttons)
 
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        def on_accept():
             title = title_field.text()
-            content = content_field.toPlainText()
-            self.notes[title] = content
-            self.show_notes()
+            if title:
+                self.notes[title] = ""
+                self.notes_list.addItem(title)
+            dialog.accept()
 
-    def modify_note(self):
-        """Modifier la note sélectionnée."""
-        selected_items = self.notes_list.selectedItems()
-        if selected_items:
-            note_text = selected_items[0].text()
-            title = note_text
-            self.open_note_dialog(title)
+        def on_reject():
+            dialog.reject()
+
+        buttons.accepted.connect(on_accept)
+        buttons.rejected.connect(on_reject)
+
+        dialog.exec()
+
+    def save_note_content(self):
+        """Enregistrer le contenu de la note actuellement affichée."""
+        if self.current_note:
+            self.notes[self.current_note] = self.note_content.toPlainText()
 
     def remove_note(self):
         """Supprimer la note sélectionnée de la liste."""
         selected_items = self.notes_list.selectedItems()
         if selected_items:
             for item in selected_items:
-                note_text = item.text()
-                if note_text in self.notes:
-                    del self.notes[note_text]
+                note_title = item.text()
+                if note_title in self.notes:
+                    del self.notes[note_title]
                 self.notes_list.takeItem(self.notes_list.row(item))
+                self.note_content.clear()
+                self.note_content.setReadOnly(True)
+                self.current_note = None
 
-    def show_context_menu(self, position):
-        """Afficher le menu contextuel pour modifier ou supprimer une note."""
-        menu = QMenu(self)
-        modify_action = QAction("Modifier", self)
-        delete_action = QAction("Supprimer", self)
-        menu.addAction(modify_action)
-        menu.addAction(delete_action)
+    def show_note_content(self, item):
+        """Afficher le contenu de la note sélectionnée."""
+        note_title = item.text()
+        self.current_note = note_title
+        self.note_content.setReadOnly(False)  # Activer l'édition
+        self.note_content.setText(self.notes.get(note_title, ""))
 
-        action = menu.exec(self.notes_list.mapToGlobal(position))
-        if action == modify_action:
-            self.modify_note()
-        elif action == delete_action:
-            self.remove_note()
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Environnement Principal")
+        self.resize(1000, 800)
+        self.setStyleSheet("background-color: #f0f0f0;")  # Fond gris pour la fenêtre principale
 
-    def show_notes(self):
-        """Afficher toutes les notes."""
-        self.notes_list.clear()
-        for title, content in self.notes.items():
-            self.notes_list.addItem(title)
+        # Ajouter le bouton de notes à la fenêtre principale
+        self.notes_button = NotesButton(self)
+        self.setCentralWidget(self.notes_button)
+
+    def resizeEvent(self, event):
+        """Ajuste la taille de la fenêtre de notes lorsque la fenêtre principale est redimensionnée."""
+        if hasattr(self, 'note_window'):
+            self.notes_button.adjust_note_window_size(self.note_window)
+        super().resizeEvent(event)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = NoteWindow()
-    window.show()
+    main_window = MainWindow()
+    main_window.show()
     sys.exit(app.exec())
