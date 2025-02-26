@@ -86,7 +86,7 @@ class NoteWindow(QWidget):
                 border-radius: 10px;
             }
             QPushButton:hover {
-                background-color: red;
+                background-color: grey;
                 color: white;
             }
         """)

@@ -62,14 +62,14 @@ class AgendaWindow(QWidget):
         # Fond de la fenêtre avec un style plus esthétique
         self.setStyleSheet("""
             AgendaWindow {
-                background-color: #2C3E50;
-                border: 1px solid #34495E;
+                background-color: #F0F0F0;
+                border: 1px solid #B0B0B0;
                 border-radius: 10px;
             }
             QLabel {
                 font-weight: bold;
                 font-size: 18px;
-                color: white;
+                color: black;
             }
             QPushButton {
                 background-color: #3498DB;
@@ -84,7 +84,7 @@ class AgendaWindow(QWidget):
                 background-color: #2980B9;
             }
             QListWidget {
-                background: #ECF0F1;
+                background: white;
                 border: 1px solid #BDC3C7;
                 padding: 10px;
                 font-size: 14px;
@@ -102,7 +102,7 @@ class AgendaWindow(QWidget):
             }
             CloseButton {
                 background: transparent;
-                color: white;
+                color: black;
                 font-size: 18px;
                 font-weight: bold;
                 border: none;
@@ -119,22 +119,23 @@ class AgendaWindow(QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(10)
 
-        # Barre de titre avec bouton Fermer
+        # Barre de titre avec bouton Fermer et croix rouge
         self.title_bar = QHBoxLayout()
         self.title_label = QLabel("📅 Agenda", self)
+        self.title_label.setStyleSheet("font-weight: bold; font-size: 18px; color: black;")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.close_button = QPushButton("❌")
+        self.close_button = QPushButton("✖")
         self.close_button.setFixedSize(40, 30)
-        self.close_button.setObjectName("CloseButton")
         self.close_button.setStyleSheet("""
-            CloseButton {
-                color: white;
+            QPushButton {
+                background: transparent;
+                color: black;
                 font-size: 18px;
                 font-weight: bold;
                 border: none;
                 border-radius: 10px;
             }
-            CloseButton:hover {
+            QPushButton:hover {
                 background-color: red;
                 color: white;
             }
