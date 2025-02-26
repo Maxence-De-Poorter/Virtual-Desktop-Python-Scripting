@@ -7,6 +7,15 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt, QDateTime, QDate
 import os
+import django
+from django.core.wsgi import get_wsgi_application
+from django.utils import timezone
+from agenda.models import Event, Task
+import datetime
+
+# Configure Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'virtualfs.settings')
+application = get_wsgi_application()
 
 class AgendaButton(QPushButton):
     def __init__(self, parent=None):
@@ -30,15 +39,18 @@ class AgendaButton(QPushButton):
 
     def open_agenda(self):
         """Ouvre une nouvelle instance de la fenêtre d'agenda."""
-        print("[DEBUG] Ouverture de l'Agenda.")
         parent_window = self.window()
 
         if not hasattr(parent_window, "open_windows"):
             parent_window.open_windows = []
 
-        agenda = AgendaWindow(parent_window)
-        parent_window.open_windows.append(agenda)
-        agenda.show()
+        if hasattr(parent_window, 'agenda_window') and parent_window.agenda_window.isVisible():
+            parent_window.agenda_window.close()
+        else:
+            agenda = AgendaWindow(parent_window)
+            parent_window.agenda_window = agenda
+            parent_window.open_windows.append(agenda)
+            agenda.show()
 
 class AgendaWindow(QWidget):
     def __init__(self, parent=None):
@@ -114,6 +126,19 @@ class AgendaWindow(QWidget):
         self.close_button = QPushButton("❌")
         self.close_button.setFixedSize(40, 30)
         self.close_button.setObjectName("CloseButton")
+        self.close_button.setStyleSheet("""
+            CloseButton {
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                border: none;
+                border-radius: 10px;
+            }
+            CloseButton:hover {
+                background-color: red;
+                color: white;
+            }
+        """)
         self.close_button.clicked.connect(self.close)
         self.title_bar.addWidget(self.title_label)
         self.title_bar.addStretch()
@@ -177,6 +202,12 @@ class AgendaWindow(QWidget):
 
         self.setLayout(self.main_layout)
         self.center_in_bureau()
+        self.load_events_from_db()
+        self.load_tasks_from_db()
+
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
 
     def center_in_bureau(self):
         """Centre la fenêtre dans le bureau virtuel."""
@@ -195,22 +226,28 @@ class AgendaWindow(QWidget):
         dialog.setWindowTitle("Ajouter/Modifier un Événement/Tâche")
         dialog.setLayout(QFormLayout())
 
-        # Champs pour le titre, la description, date de début et date de fin
+        # Champs pour le titre et la description
         title_field = QLineEdit(dialog)
         description_field = QTextEdit(dialog)
-        start_datetime = QDateTimeEdit(dialog)
-        start_datetime.setDateTime(QDateTime.currentDateTime())
-        start_datetime.setDisplayFormat("yyyy-MM-dd HH:mm")
-        start_datetime.setCalendarPopup(True)
-        end_datetime = QDateTimeEdit(dialog)
-        end_datetime.setDateTime(QDateTime.currentDateTime().addSecs(3600))  # 1 heure après
-        end_datetime.setDisplayFormat("yyyy-MM-dd HH:mm")
-        end_datetime.setCalendarPopup(True)
+
+        # Champ pour la date et heure de début (uniquement pour les événements)
+        start_datetime = QDateTimeEdit(dialog) if not is_task else None
+        if start_datetime:
+            start_datetime.setDateTime(QDateTime.currentDateTime())
+            start_datetime.setDisplayFormat("yyyy-MM-dd HH:mm")
+            start_datetime.setCalendarPopup(True)
+            dialog.layout().addRow("Date et heure de début:", start_datetime)
+
+        # Champ pour la date et heure de fin (uniquement pour les événements)
+        end_datetime = QDateTimeEdit(dialog) if not is_task else None
+        if end_datetime:
+            end_datetime.setDateTime(QDateTime.currentDateTime().addSecs(3600))  # 1 heure après
+            end_datetime.setDisplayFormat("yyyy-MM-dd HH:mm")
+            end_datetime.setCalendarPopup(True)
+            dialog.layout().addRow("Date et heure de fin:", end_datetime)
 
         dialog.layout().addRow("Titre:", title_field)
         dialog.layout().addRow("Description:", description_field)
-        dialog.layout().addRow("Date et heure de début:", start_datetime)
-        dialog.layout().addRow("Date et heure de fin:", end_datetime)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, dialog)
         dialog.layout().addWidget(buttons)
@@ -219,27 +256,55 @@ class AgendaWindow(QWidget):
         buttons.rejected.connect(dialog.reject)
 
         if event_to_edit:
-            title_field.setText(event_to_edit[0])
-            description_field.setText(event_to_edit[1])
-            start_datetime.setDateTime(QDateTime.fromString(f"{event_to_edit[2][0]} {event_to_edit[2][1]}", "yyyy-MM-dd HH:mm"))
-            end_datetime.setDateTime(QDateTime.fromString(f"{event_to_edit[2][0]} {event_to_edit[3]}", "yyyy-MM-dd HH:mm"))
+            title_field.setText(event_to_edit.title)
+            description_field.setText(event_to_edit.description)
+            if start_datetime:
+                start_datetime.setDateTime(event_to_edit.start_time)
+            if end_datetime:
+                end_datetime.setDateTime(event_to_edit.end_time)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             title = title_field.text()
             description = description_field.toPlainText()
-            start_time = start_datetime.dateTime()
-            end_time = end_datetime.dateTime()
 
-            # Validation des dates
-            if start_time >= QDateTime.currentDateTime() and end_time > start_time:
-                event_key = (start_time.date(), start_time.time().toString("HH:mm"))
-                if is_task:
-                    self.tasks[event_key] = (title, description, end_time.toString("HH:mm"))
+            if is_task:
+                due_date = self.calendar.selectedDate().toPyDate()
+                if event_to_edit:
+                    event_to_edit.title = title
+                    event_to_edit.description = description
+                    event_to_edit.due_date = timezone.make_aware(datetime.datetime.combine(due_date, datetime.time.min))
                 else:
-                    self.events[event_key] = (title, description, end_time.toString("HH:mm"))
-                self.show_events_for_date(self.calendar.selectedDate())
+                    task = Task(title=title, description=description, due_date=timezone.make_aware(datetime.datetime.combine(due_date, datetime.time.min)), user=django.contrib.auth.models.User.objects.first())
+                    task.save()
             else:
-                QMessageBox.warning(self, "Erreur", "La date de fin doit être après la date de début et les événements ne peuvent pas être dans le passé.")
+                start_time = timezone.make_aware(datetime.datetime(
+                    start_datetime.date().year(),
+                    start_datetime.date().month(),
+                    start_datetime.date().day(),
+                    start_datetime.time().hour(),
+                    start_datetime.time().minute()
+                ))
+
+                end_time = timezone.make_aware(datetime.datetime(
+                    end_datetime.date().year(),
+                    end_datetime.date().month(),
+                    end_datetime.date().day(),
+                    end_datetime.time().hour(),
+                    end_datetime.time().minute()
+                ))
+
+                if start_time >= timezone.now() and end_time > start_time:
+                    if event_to_edit:
+                        event_to_edit.title = title
+                        event_to_edit.description = description
+                        event_to_edit.start_time = start_time
+                        event_to_edit.end_time = end_time
+                    else:
+                        event = Event(title=title, description=description, start_time=start_time, end_time=end_time, user=django.contrib.auth.models.User.objects.first())
+                        event.save()
+                    event_to_edit.save()
+
+            self.show_events_for_date(self.calendar.selectedDate())
 
     def modify_event(self):
         """Modifier l'événement ou la tâche sélectionné(e)."""
@@ -249,14 +314,15 @@ class AgendaWindow(QWidget):
         if selected_items:
             event_text = selected_items[0].text()
             parts = event_text.split(" - ")
-            if len(parts) == 2:
-                title = parts[0]
-                description = parts[1]
-                start_time = QDateTime.fromString(f"{parts[1][:10]} {parts[1][11:]}", "yyyy-MM-dd HH:mm")
-                end_time = QDateTime.fromString(f"{parts[1][:10]} {parts[1][11:]}", "yyyy-MM-dd HH:mm")
-                event_key = (start_time.date(), start_time.time().toString("HH:mm"))
+            if len(parts) == 3:
+                # Extraction de l'identifiant numérique
+                event_id = parts[0]  # Prendre la première partie de la chaîne comme identifiant
                 is_task = bool(self.task_list.selectedItems())
-                self.open_event_dialog(is_task=is_task, event_to_edit=(title, description, event_key, end_time.toString("HH:mm")))
+                if is_task:
+                    event_to_edit = Task.objects.get(id=event_id)
+                else:
+                    event_to_edit = Event.objects.get(id=event_id)
+                self.open_event_dialog(is_task=is_task, event_to_edit=event_to_edit)
 
     def remove_event(self):
         """Supprimer l'événement ou la tâche sélectionné(e) de la liste."""
@@ -268,23 +334,26 @@ class AgendaWindow(QWidget):
                 # Supprimer l'événement ou la tâche du dictionnaire
                 event_text = item.text()
                 parts = event_text.split(" - ")
-                if len(parts) == 2:
-                    event_key = (QDateTime.fromString(f"{parts[1][:10]} {parts[1][11:]}", "yyyy-MM-dd HH:mm").date(), parts[1][11:])
-                    if event_key in self.events:
-                        del self.events[event_key]
-                    elif event_key in self.tasks:
-                        del self.tasks[event_key]
-                if self.event_list.selectedItems():
-                    self.event_list.takeItem(self.event_list.row(item))
-                else:
-                    self.task_list.takeItem(self.task_list.row(item))
-                # Supprimer l'indicateur d'événement ou de tâche
-                if event_key in self.event_indicators:
-                    self.event_indicators[event_key].deleteLater()
-                    del self.event_indicators[event_key]
-                elif event_key in self.task_indicators:
-                    self.task_indicators[event_key].deleteLater()
-                    del self.task_indicators[event_key]
+                if len(parts) == 3:
+                    event_id = parts[0]  # Prendre la première partie de la chaîne comme identifiant
+                    if bool(self.task_list.selectedItems()):
+                        task = Task.objects.get(id=event_id)
+                        task.delete()
+                    else:
+                        event = Event.objects.get(id=event_id)
+                        event.delete()
+                    # Supprimer l'élément de la liste
+                    if self.event_list.selectedItems():
+                        self.event_list.takeItem(self.event_list.row(item))
+                    else:
+                        self.task_list.takeItem(self.task_list.row(item))
+                    # Supprimer l'indicateur d'événement ou de tâche
+                    if event_id in self.event_indicators:
+                        self.event_indicators[event_id].deleteLater()
+                        del self.event_indicators[event_id]
+                    elif event_id in self.task_indicators:
+                        self.task_indicators[event_id].deleteLater()
+                        del self.task_indicators[event_id]
 
     def show_context_menu(self, position):
         """Afficher le menu contextuel pour modifier ou supprimer un événement ou une tâche."""
@@ -304,56 +373,65 @@ class AgendaWindow(QWidget):
         """Afficher les événements et tâches pour la date sélectionnée."""
         self.event_list.clear()
         self.task_list.clear()
-        for key, value in self.events.items():
-            if key[0] == date:
-                title, description, end_time = value
-                self.event_list.addItem(f"{title} - {key[1]}")
-                # Ajouter un indicateur d'événement
-                if key not in self.event_indicators:
-                    indicator = QFrame(self.calendar)
-                    indicator.setStyleSheet("background: #2ECC71; border-radius: 5px; color: white; padding: 2px;")
-                    indicator.setGeometry(self.calendar.rect())
-                    indicator.move(self.calendar.x() + 5, self.calendar.y() + 5)
-                    indicator.setToolTip(f"{title}\n{description}")
-                    self.event_indicators[key] = indicator
 
-        for key, value in self.tasks.items():
-            if key[0] == date:
-                title, description, end_time = value
-                self.task_list.addItem(f"{title} - {key[1]}")
-                # Ajouter un indicateur de tâche
-                if key not in self.task_indicators:
-                    indicator = QFrame(self.calendar)
-                    indicator.setStyleSheet("background: #E74C3C; border-radius: 5px; color: white; padding: 2px;")
-                    indicator.setGeometry(self.calendar.rect())
-                    indicator.move(self.calendar.x() + 5, self.calendar.y() + 5)
-                    indicator.setToolTip(f"{title}\n{description}")
-                    self.task_indicators[key] = indicator
+        # Convertir QDate en datetime.date
+        date = date.toPyDate()
 
-        # Supprimer les indicateurs pour les dates sans événements ou tâches
-        keys_to_remove = [key for key in self.event_indicators if key[0] != date]
-        for key in keys_to_remove:
-            self.event_indicators[key].deleteLater()
-            del self.event_indicators[key]
+        events = Event.objects.filter(start_time__date=date)
+        for event in events:
+            self.event_list.addItem(f"{event.id} - {event.title} - {event.start_time.strftime('%Y-%m-%d %H:%M')}")
 
-        keys_to_remove = [key for key in self.task_indicators if key[0] != date]
-        for key in keys_to_remove:
-            self.task_indicators[key].deleteLater()
-            del self.task_indicators[key]
+        tasks = Task.objects.filter(due_date=date)
+        for task in tasks:
+            self.task_list.addItem(f"{task.id} - {task.title} - {task.due_date.strftime('%Y-%m-%d %H:%M')}")
 
     def show_event_details(self, item):
         """Afficher les détails de l'événement ou de la tâche dans une fenêtre popup."""
         event_text = item.text()
         parts = event_text.split(" - ")
-        if len(parts) == 2:
-            event_key = (QDateTime.fromString(f"{parts[1][:10]} {parts[1][11:]}", "yyyy-MM-dd HH:mm").date(), parts[1][11:])
-            if event_key in self.events:
-                title, description, end_time = self.events[event_key]
-                message = f"Événement: {title}\nDescription: {description}\nHeure de fin: {end_time}"
-            elif event_key in self.tasks:
-                title, description, end_time = self.tasks[event_key]
-                message = f"Tâche: {title}\nDescription: {description}\nHeure de fin: {end_time}"
+        if len(parts) == 3:
+            event_id = parts[0]  # Prendre la première partie de la chaîne comme identifiant
+            if event_id in self.events:
+                event = self.events[event_id]
+                message = f"Événement: {event.title}\nDescription: {event.description}\nHeure de fin: {event.end_time.strftime('%H:%M')}"
+            elif event_id in self.tasks:
+                task = self.tasks[event_id]
+                message = f"Tâche: {task.title}\nDescription: {task.description}"
             else:
                 return
 
             QToolTip.showText(self.calendar.mapToGlobal(self.calendar.rect().topLeft()), message, self.calendar)
+
+    def load_events_from_db(self):
+        """Charge les événements depuis la base de données."""
+        events = Event.objects.all()
+        for event in events:
+            self.events[event.id] = event  # Utiliser l'identifiant unique
+
+    def load_tasks_from_db(self):
+        """Charge les tâches depuis la base de données."""
+        tasks = Task.objects.all()
+        for task in tasks:
+            self.tasks[task.id] = task  # Utiliser l'identifiant unique
+
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
+
+    def closeEvent(self, event):
+        """Ferme la connexion à la base de données lorsque la fenêtre est fermée."""
+        django.db.connections.close_all()
+        super().closeEvent(event)
