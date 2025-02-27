@@ -1,17 +1,17 @@
 import sys
 import os
 import django
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QPushButton, QFrame, QMenu, QInputDialog, QMessageBox
+)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 
+# Configuration Django pour la gestion des fichiers
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + "/virtualfs"))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "virtualfs.settings")
 django.setup()
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QListWidget, QPushButton, QHBoxLayout,
-    QApplication, QFrame, QMenu, QInputDialog, QMessageBox
-)
-from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import Qt
 from files.models import Folder, File
 
 class FileExplorerButton(QPushButton):
@@ -35,10 +35,9 @@ class FileExplorerButton(QPushButton):
         self.clicked.connect(self.open_explorer)
 
     def open_explorer(self):
-        """Ouvre une nouvelle instance de l'explorateur de fichiers virtuels."""
+        """Ouvre une nouvelle instance de l'explorateur de fichiers."""
         print("[DEBUG] Ouverture Explorateur Virtuel.")
         parent_window = self.window()
-
         if not hasattr(parent_window, "open_windows"):
             parent_window.open_windows = []
 
@@ -49,61 +48,39 @@ class FileExplorerButton(QPushButton):
 class FileExplorer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Supprime la bordure native et définit la taille de la fenêtre
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
         self.resize(800, 600)
 
-        # Fond de la fenêtre avec style amélioré
-        self.background_label = QLabel(self)
-        self.background_label.setGeometry(0, 0, self.width(), self.height())
-        self.background_label.setStyleSheet("""
-            background-color: #2e2e2e;  
-            border-radius: 10px;
-            border: 2px solid #4a4a4a;
-        """)
+        # Layout principal sans marges pour occuper tout l'espace
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # Layout principal
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
-        self.main_layout.setSpacing(5)
+        # --- En-tête personnalisé (même style que le chatbot) ---
+        self.title_bar = QWidget(self)
+        self.title_bar.setStyleSheet("background-color: #444444;")
+        self.title_layout = QHBoxLayout(self.title_bar)
+        self.title_layout.setContentsMargins(5, 5, 5, 5)
 
-        # Barre de titre avec bouton Fermer
-        self.title_bar = QHBoxLayout()
-        self.title_bar.setContentsMargins(10, 5, 10, 5)
-        self.title_label = QLabel("Explorateur de fichiers", self)
-        self.title_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white;")
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.close_button = QPushButton("❌", self)
-        self.close_button.setFixedSize(40, 30)
-        self.close_button.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: white;
-                font-size: 18px;
-                font-weight: bold;
-                border: none;
-            }
-            QPushButton:hover {
-                color: red;
-            }
-        """)
+        self.title_label = QLabel("Explorateur de fichiers", self.title_bar)
+        self.title_label.setStyleSheet("color: white; font-size: 16px;")
+        self.title_layout.addWidget(self.title_label)
+        self.title_layout.addStretch()
+
+        self.close_button = QPushButton("❌", self.title_bar)
+        self.close_button.setFixedSize(30, 30)
+        self.close_button.setStyleSheet("border: none; background: transparent; color: white; font-size: 16px;")
         self.close_button.clicked.connect(self.close)
-        self.title_bar.addWidget(self.title_label)
-        self.title_bar.addStretch()
-        self.title_bar.addWidget(self.close_button)
-        self.main_layout.addLayout(self.title_bar)
+        self.title_layout.addWidget(self.close_button)
 
-        # Séparateur sous le titre
-        self.separator = QFrame(self)
-        self.separator.setFixedHeight(2)
-        self.separator.setStyleSheet("background-color: #4a4a4a;")
-        self.main_layout.addWidget(self.separator)
+        self.layout.addWidget(self.title_bar)
 
-        # Liste des fichiers et dossiers (zone centrale)
+        # --- Zone de fichiers (affichage et interaction) ---
         self.file_list = QListWidget(self)
         self.file_list.setStyleSheet("""
             QListWidget {
                 background-color: #2e2e2e;
-                border: 1px solid #c0c0c0;
+                border: none;
                 padding: 10px;
                 font-size: 14px;
                 color: white;
@@ -114,55 +91,55 @@ class FileExplorer(QWidget):
             QListWidget::item:selected {
                 background-color: #0078D7;
                 color: white;
+                border-radius: 5px;
             }
         """)
         self.file_list.itemDoubleClicked.connect(self.navigate)
         self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.file_list.customContextMenuRequested.connect(self.open_context_menu)
-        self.main_layout.addWidget(self.file_list)
+        self.layout.addWidget(self.file_list)
 
-        # Fil d’Ariane (breadcrumb) placé en bas sans encadré, texte en blanc
-        self.breadcrumb_frame = QFrame(self)
-        self.breadcrumb_frame.setStyleSheet("""
-            QFrame {
-                background-color: transparent;
-                border: none;
-            }
-        """)
-        self.breadcrumb_layout = QHBoxLayout(self.breadcrumb_frame)
+        # --- Fil d'Ariane (breadcrumb) ---
+        self.breadcrumb_layout = QHBoxLayout()
         self.breadcrumb_layout.setContentsMargins(5, 5, 5, 5)
         self.breadcrumb_layout.setSpacing(5)
-        self.main_layout.addWidget(self.breadcrumb_frame)
+        self.layout.addLayout(self.breadcrumb_layout)
 
         # Initialisation du dossier courant (Root)
         self.current_folder, _ = Folder.objects.get_or_create(name="Root", parent=None)
         self.refresh_files()
 
-        self.setLayout(self.main_layout)
-        self.center_in_bureau()
+    def refresh_files(self):
+        """Rafraîchir la liste des fichiers et dossiers et mettre à jour le breadcrumb."""
+        self.file_list.clear()
+        if self.current_folder.parent is not None:
+            self.file_list.addItem("📁 ..")
+        folders = Folder.objects.filter(parent=self.current_folder)
+        for folder in folders:
+            self.file_list.addItem(f"📁 {folder.name}")
+        files = File.objects.filter(folder=self.current_folder)
+        for file in files:
+            self.file_list.addItem(f"📄 {file.name}")
+        self.update_breadcrumb()
 
     def update_breadcrumb(self):
-        """Reconstruit le fil d’Ariane cliquable en bas, avec le texte 'Chemin:' et en blanc."""
-        # Vider le layout actuel
+        """Met à jour le fil d'Ariane en bas."""
         while self.breadcrumb_layout.count():
             item = self.breadcrumb_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
 
-        # Ajout du préfixe "Chemin:" en blanc
         chemin_label = QLabel("Chemin:", self)
         chemin_label.setStyleSheet("color: white; font-size: 14px;")
         self.breadcrumb_layout.addWidget(chemin_label)
 
-        # Construction de la liste de dossiers de Root jusqu'au dossier courant
         path_list = []
         folder = self.current_folder
         while folder:
             path_list.insert(0, folder)
             folder = folder.parent
 
-        # Pour chaque dossier, ajouter un bouton cliquable en blanc
         for index, folder in enumerate(path_list):
             btn = QPushButton(folder.name, self)
             btn.setStyleSheet("""
@@ -183,26 +160,12 @@ class FileExplorer(QWidget):
                 sep = QLabel(">", self)
                 sep.setStyleSheet("color: white; font-size: 14px;")
                 self.breadcrumb_layout.addWidget(sep)
+
         self.breadcrumb_layout.addStretch()
 
-    def refresh_files(self):
-        """Rafraîchir la liste des fichiers et dossiers depuis la BDD et mettre à jour le breadcrumb."""
-        self.file_list.clear()
-        # Si on n'est pas dans Root, on ajoute en première position un élément spécial "dossier parent"
-        if self.current_folder.parent is not None:
-            self.file_list.addItem("📁 ..")
-        folders = Folder.objects.filter(parent=self.current_folder)
-        for folder in folders:
-            self.file_list.addItem(f"📁 {folder.name}")
-        files = File.objects.filter(folder=self.current_folder)
-        for file in files:
-            self.file_list.addItem(f"📄 {file.name}")
-        self.update_breadcrumb()
-
     def navigate(self, item):
-        """Gérer la navigation dans les dossiers via double-clic."""
+        """Naviguer dans les dossiers."""
         selected = item.text()
-        # Si l'utilisateur clique sur l'élément spécial "dossier parent", revenir en arrière
         if selected == "📁 ..":
             self.go_back()
             return
@@ -218,89 +181,10 @@ class FileExplorer(QWidget):
         self.refresh_files()
 
     def go_back(self):
-        """Retourne au dossier parent."""
+        """Retour au dossier parent."""
         if self.current_folder.parent is not None:
             self.current_folder = self.current_folder.parent
             self.refresh_files()
-
-    def center_in_bureau(self):
-        """Centre la fenêtre dans le bureau virtuel."""
-        if self.parent():
-            parent_geometry = self.parent().geometry()
-            window_geometry = self.frameGeometry()
-            window_geometry.moveCenter(parent_geometry.center())
-            self.move(window_geometry.topLeft())
-
-    def resizeEvent(self, event):
-        self.background_label.setGeometry(0, 0, self.width(), self.height())
-        super().resizeEvent(event)
-
-    # --- Fonctions pour le menu contextuel ---
-
-    def create_folder(self):
-        """Créer un nouveau dossier dans le dossier courant."""
-        folder_name, ok = QInputDialog.getText(self, "Créer un dossier", "Nom du nouveau dossier :")
-        if ok and folder_name:
-            Folder.objects.create(name=folder_name, parent=self.current_folder)
-            self.refresh_files()
-
-    def rename_folder_context(self, item):
-        """Renommer un dossier depuis le menu contextuel."""
-        if item and item.text().startswith("📁"):
-            old_name = item.text().replace("📁 ", "")
-            new_name, ok = QInputDialog.getText(self, "Renommer le dossier", "Nouveau nom :", text=old_name)
-            if ok and new_name:
-                folder = Folder.objects.filter(name=old_name, parent=self.current_folder).first()
-                if folder:
-                    folder.name = new_name
-                    folder.save()
-                    self.refresh_files()
-
-    def delete_folder_context(self, item):
-        """Supprimer un dossier depuis le menu contextuel après confirmation."""
-        if item and item.text().startswith("📁"):
-            folder_name = item.text().replace("📁 ", "")
-            reply = QMessageBox.question(
-                self,
-                "Confirmer la suppression",
-                f"Voulez-vous vraiment supprimer le dossier '{folder_name}' ?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                folder = Folder.objects.filter(name=folder_name, parent=self.current_folder).first()
-                if folder:
-                    folder.delete()
-                    self.refresh_files()
-
-    def rename_file_context(self, item):
-        """Renommer un fichier depuis le menu contextuel."""
-        if item and item.text().startswith("📄"):
-            old_name = item.text().replace("📄 ", "")
-            new_name, ok = QInputDialog.getText(self, "Renommer le fichier", "Nouveau nom :", text=old_name)
-            if ok and new_name:
-                file_obj = File.objects.filter(name=old_name, folder=self.current_folder).first()
-                if file_obj:
-                    file_obj.name = new_name
-                    file_obj.save()
-                    self.refresh_files()
-
-    def delete_file_context(self, item):
-        """Supprimer un fichier depuis le menu contextuel après confirmation."""
-        if item and item.text().startswith("📄"):
-            file_name = item.text().replace("📄 ", "")
-            reply = QMessageBox.question(
-                self,
-                "Confirmer la suppression",
-                f"Voulez-vous vraiment supprimer le fichier '{file_name}' ?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                file_obj = File.objects.filter(name=file_name, folder=self.current_folder).first()
-                if file_obj:
-                    file_obj.delete()
-                    self.refresh_files()
 
     def open_context_menu(self, position):
         """Ouvre un menu contextuel au clic droit sur la liste des fichiers/dossiers."""
@@ -315,8 +199,6 @@ class FileExplorer(QWidget):
                 rename_action = menu.addAction("Renommer fichier")
                 delete_action = menu.addAction("Supprimer fichier")
         action = menu.exec(self.file_list.mapToGlobal(position))
-        if action is None:
-            return
         if action == create_action:
             self.create_folder()
         elif item:
