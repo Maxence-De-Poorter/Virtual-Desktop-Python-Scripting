@@ -4,6 +4,7 @@ from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
 from src.terminal import TerminalButton
 from src.chatbot import ChatbotButton
+from src.browser import BrowserButton
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
@@ -32,6 +33,9 @@ class TaskBar(QWidget):
 
         self.chatbot_button = ChatbotButton(self)
         layout.addWidget(self.chatbot_button)
+
+        self.browser_button = BrowserButton(self)
+        layout.addWidget(self.browser_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
