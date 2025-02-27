@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
 from src.terminal import TerminalButton
+from src.chatbot import ChatbotButton
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
@@ -28,6 +29,9 @@ class TaskBar(QWidget):
 
         self.terminal_button = TerminalButton(self)
         layout.addWidget(self.terminal_button)
+
+        self.chatbot_button = ChatbotButton(self)
+        layout.addWidget(self.chatbot_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
