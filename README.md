@@ -18,13 +18,9 @@ myenv\Scripts\activate
 ```
 4. Installer les dépendances.
 ```bash
-pip install PyQt6
+pip install PyQt6 openai
 ```
 5. Exécuter le projet.
 ```bash
 python main.py
 ```
-
-
-
-g
