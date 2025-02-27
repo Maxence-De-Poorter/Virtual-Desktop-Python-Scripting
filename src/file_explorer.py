@@ -49,9 +49,8 @@ class FileExplorerButton(QPushButton):
 class FileExplorer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Explorateur Virtuel")
-        self.setFixedSize(700, 500)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+        self.resize(800, 600)
 
         # Fond de la fenêtre avec style amélioré
         self.background_label = QLabel(self)
