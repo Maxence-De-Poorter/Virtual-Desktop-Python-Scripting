@@ -1,3 +1,6 @@
-from django.shortcuts import render
+from django.http import JsonResponse
+from .models import Video
 
-# Create your views here.
+def liste_videos(request):
+    videos = Video.objects.values('title', 'file_path')
+    return JsonResponse(list(videos), safe=False)

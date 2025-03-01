@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QPushButton
 from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
@@ -9,10 +9,10 @@ from src.browser import BrowserButton
 class TaskBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
         self.setStyleSheet("""
             TaskBar {
-                background-color: rgba(34, 34, 34, 0.85); /* Fond unifié */
+                background-color: rgba(34, 34, 34, 0.85);
             }
         """)
 
@@ -37,6 +37,24 @@ class TaskBar(QWidget):
         self.browser_button = BrowserButton(self)
         layout.addWidget(self.browser_button)
 
+        # 📌 Bouton Flux RSS
+        self.flux_button = QPushButton("Flux RSS")
+        self.flux_button.setStyleSheet("color: white; background-color: #555; padding: 5px;")
+        self.flux_button.clicked.connect(parent.ouvrir_flux_rss)
+        layout.addWidget(self.flux_button)
+
+        # 📊 Bouton Graph Temps Réel
+        self.graph_button = QPushButton("Graph Temps Réel")
+        self.graph_button.setStyleSheet("color: white; background-color: #555; padding: 5px;")
+        self.graph_button.clicked.connect(parent.ouvrir_graph_temps_reel)
+        layout.addWidget(self.graph_button)
+
+        # 🎥 Bouton Vidéo Player
+        self.video_button = QPushButton("🎥 Vidéos")
+        self.video_button.setStyleSheet("color: white; background-color: #555; padding: 5px;")
+        self.video_button.clicked.connect(parent.ouvrir_video_player)
+        layout.addWidget(self.video_button)
+
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(spacer)
@@ -54,12 +72,9 @@ class TaskBar(QWidget):
         self.setLayout(layout)
 
     def update_time(self):
-        """Met à jour l'horloge de la barre des tâches en ajoutant 1 heure."""
-        # Récupère l'heure actuelle et ajoute 3600 secondes (1 heure)
         current_time = QTime.currentTime().addSecs(3600)
         self.clock_label.setText(current_time.toString("HH:mm:ss"))
 
     def resizeEvent(self, event):
-        """ Ajuste la largeur de la barre des tâches lors du redimensionnement de la fenêtre. """
         self.setGeometry(0, self.parent().height() - 50, self.parent().width(), 50)
         super().resizeEvent(event)

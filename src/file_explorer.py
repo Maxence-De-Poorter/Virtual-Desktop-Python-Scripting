@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__) + "/virtualfs"))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "virtualfs.settings")
 django.setup()
 
-from files.models import Folder, File
+from files.models import Folder, File, Video
 
 class FileExplorerButton(QPushButton):
     def __init__(self, parent=None):
@@ -120,7 +120,11 @@ class FileExplorer(QWidget):
         files = File.objects.filter(folder=self.current_folder)
         for file in files:
             self.file_list.addItem(f"📄 {file.name}")
-        self.update_breadcrumb()
+
+        videos = Video.objects.filter(folder=self.current_folder)
+        for video in videos:
+            self.file_list.addItem(f"🎥 {video.title}")
+
 
     def update_breadcrumb(self):
         """Met à jour le fil d'Ariane en bas."""
@@ -174,6 +178,13 @@ class FileExplorer(QWidget):
         if folder:
             self.current_folder = folder
             self.refresh_files()
+        selected = item.text().replace("🎥 ", "")
+        video = Video.objects.filter(title=selected, folder=self.current_folder).first()
+
+        if video:
+            self.open_video(video.file.name)
+            return
+
 
     def navigate_to_folder(self, folder):
         """Naviguer directement vers un dossier via le breadcrumb."""
@@ -213,8 +224,14 @@ class FileExplorer(QWidget):
                 elif action == delete_action:
                     self.delete_file_context(item)
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    explorer = FileExplorer()
-    explorer.show()
-    sys.exit(app.exec())
+
+
+    def open_video(self, file_path):
+        parent_window = self.window()
+        if hasattr(parent_window, 'ouvrir_video_player'):
+            parent_window.ouvrir_video_player(file_path)
+
+    def get_absolute_video_path(relative_path):
+        """Transforme 'media/videos/...' en chemin complet utilisable par VLC."""
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+        return os.path.join(base_dir, relative_path)
