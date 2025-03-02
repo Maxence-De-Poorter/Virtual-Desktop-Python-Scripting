@@ -13,7 +13,7 @@ class RealTimeGraphButton(QPushButton):
     def __init__(self, parent=None):
         super().__init__("", parent)
         self.setFixedSize(40, 40)
-        icon_path = os.path.join(os.path.dirname(__file__), "../assets/fluxRSS_icon.png")
+        icon_path = os.path.join(os.path.dirname(__file__), "../assets/bourse_icon.png")
         self.setIcon(QIcon(icon_path))
         self.setIconSize(self.size())
 
