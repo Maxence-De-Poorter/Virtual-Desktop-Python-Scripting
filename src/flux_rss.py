@@ -39,15 +39,6 @@ class FluxRSSButton(QPushButton):
         parent_window.open_windows.append(fluxRSS)
         fluxRSS.show()
 
-import os
-import sys
-import feedparser
-import webbrowser
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QScrollArea, QFrame, QLabel, QPushButton, QHBoxLayout, QApplication
-)
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
 
 class FluxRSS(QWidget):
     def __init__(self, parent=None):
