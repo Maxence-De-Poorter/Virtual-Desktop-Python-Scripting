@@ -1,9 +1,11 @@
 import sys
 import os
-from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QListWidget, QInputDialog
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QPropertyAnimation, QRect
 from PyQt6.QtGui import QIcon
+
+from files.models import Bookmark  # Import du modèle Django
 
 class BrowserButton(QPushButton):
     def __init__(self, parent=None):
@@ -42,23 +44,31 @@ class WebBrowser(QWidget):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
         self.resize(800, 600)
 
-        # Layout principal
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- En-tête du navigateur ---
+        # --- Barre de navigation ---
         self.title_bar = QWidget(self)
-        self.title_bar.setFixedHeight(40)  # ✅ Limite la hauteur de l'en-tête
+        self.title_bar.setFixedHeight(40)
         self.title_bar.setStyleSheet("background-color: #444444;")
-
         self.title_layout = QHBoxLayout(self.title_bar)
         self.title_layout.setContentsMargins(10, 5, 10, 5)
 
-        # 🔹 Remplacement de QPushButton par QLabel pour éviter une hauteur trop grande
         self.title_label = QLabel("🔗 Navigateur Web", self.title_bar)
         self.title_label.setStyleSheet("color: white; font-size: 16px;")
         self.title_layout.addWidget(self.title_label)
-        self.title_layout.addStretch()
+
+        self.menu_button = QPushButton("📂", self.title_bar)
+        self.menu_button.setFixedSize(30, 30)
+        self.menu_button.setStyleSheet("border: none; background: transparent; color: white; font-size: 16px;")
+        self.menu_button.clicked.connect(self.toggle_bookmarks)
+        self.title_layout.addWidget(self.menu_button)
+
+        self.add_bookmark_button = QPushButton("⭐", self.title_bar)
+        self.add_bookmark_button.setFixedSize(30, 30)
+        self.add_bookmark_button.setStyleSheet("border: none; background: transparent; color: white; font-size: 16px;")
+        self.add_bookmark_button.clicked.connect(self.add_bookmark)
+        self.title_layout.addWidget(self.add_bookmark_button)
 
         self.close_button = QPushButton("❌", self.title_bar)
         self.close_button.setFixedSize(30, 30)
@@ -68,8 +78,77 @@ class WebBrowser(QWidget):
 
         self.layout.addWidget(self.title_bar)
 
-        # --- Vue Web (navigateur intégré) ---
+        # --- Vue Web (Navigateur intégré) ---
         self.browser = QWebEngineView(self)
         self.browser.setUrl(QUrl("https://www.google.com"))
-
         self.layout.addWidget(self.browser)
+
+        # --- Menu latéral pour les signets (caché par défaut) ---
+        self.bookmark_panel = QWidget(self)
+        self.bookmark_panel.setFixedWidth(250)
+        self.bookmark_panel.setStyleSheet("background-color: #2e2e2e; border-right: 2px solid #555555;")
+
+        self.bookmark_layout = QVBoxLayout(self.bookmark_panel)
+        self.bookmark_layout.setContentsMargins(10, 10, 10, 10)
+
+        self.bookmark_list = QListWidget(self.bookmark_panel)
+        self.bookmark_list.setStyleSheet("""
+            QListWidget {
+                background-color: #2e2e2e;
+                border: none;
+                font-size: 14px;
+                color: white;
+            }
+            QListWidget::item {
+                padding: 8px;
+            }
+            QListWidget::item:selected {
+                background-color: #0078D7;
+                color: white;
+                border-radius: 5px;
+            }
+        """)
+        self.bookmark_list.itemClicked.connect(self.load_bookmark)
+        self.bookmark_layout.addWidget(self.bookmark_list)
+
+        self.bookmark_panel.setLayout(self.bookmark_layout)
+
+        # --- Animation pour le menu latéral ---
+        self.bookmark_panel.setGeometry(-250, 40, 250, 560)  # Caché en dehors de l'écran
+        self.animation = QPropertyAnimation(self.bookmark_panel, b"geometry")
+        self.is_menu_visible = False  # Menu fermé au démarrage
+
+        self.load_bookmarks()
+
+    def add_bookmark(self):
+        """Ajoute l'URL actuelle aux signets."""
+        url = self.browser.url().toString()
+        title, ok = QInputDialog.getText(self, "Ajouter un signet", "Nom du signet:")
+        if ok and title:
+            Bookmark.objects.create(title=title, url=url)
+            self.load_bookmarks()
+
+    def load_bookmarks(self):
+        """Charge tous les signets enregistrés."""
+        self.bookmark_list.clear()
+        for bookmark in Bookmark.objects.all():
+            self.bookmark_list.addItem(f"{bookmark.title} ({bookmark.url})")
+
+    def load_bookmark(self, item):
+        """Charge un signet sélectionné."""
+        url = item.text().split(" (")[1][:-1]
+        self.browser.setUrl(QUrl(url))
+
+    def toggle_bookmarks(self):
+        """Affiche ou cache le menu latéral avec une animation."""
+        if self.is_menu_visible:
+            self.animation.setDuration(300)
+            self.animation.setStartValue(QRect(0, 40, 250, 560))
+            self.animation.setEndValue(QRect(-250, 40, 250, 560))
+        else:
+            self.animation.setDuration(300)
+            self.animation.setStartValue(QRect(-250, 40, 250, 560))
+            self.animation.setEndValue(QRect(0, 40, 250, 560))
+
+        self.animation.start()
+        self.is_menu_visible = not self.is_menu_visible
