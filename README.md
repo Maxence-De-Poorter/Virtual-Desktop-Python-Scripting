@@ -18,7 +18,7 @@ myenv\Scripts\activate
 ```
 4. Installer les dépendances.
 ```bash
-pip install PyQt6 openai PyQt6-WebEngine django yfinance feedparser
+pip install PyQt6 openai PyQt6-WebEngine django yfinance feedparser pyqtgraph
 ```
 5. Exécuter le projet.
 ```bash
