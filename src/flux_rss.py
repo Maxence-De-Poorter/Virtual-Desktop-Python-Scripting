@@ -1,12 +1,17 @@
 import os
 import sys
 import feedparser
-import webbrowser
+# On n'utilise plus webbrowser.open pour ouvrir l'article dans le navigateur externe
+# On va utiliser notre navigateur intégré.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QFrame, QLabel, QPushButton, QHBoxLayout, QApplication
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QIcon
+
+# Importez votre classe WebBrowser depuis le module approprié.
+# Remplacez "browser" par le nom de votre module qui contient la classe WebBrowser.
+from src.browser import WebBrowser  
 
 class FluxRSSButton(QPushButton):
     def __init__(self, parent=None):
@@ -137,6 +142,7 @@ class FluxRSS(QWidget):
         description_label.setStyleSheet("font-size: 13px; color: #cccccc;")
 
         bouton_lire = QPushButton("Lire l’article")
+        # Modification ici : on ouvre l'article dans notre navigateur intégré
         bouton_lire.clicked.connect(lambda checked=False, url=lien: self.ouvrir_lien(url))
 
         carte_layout.addWidget(titre_label)
@@ -157,7 +163,16 @@ class FluxRSS(QWidget):
         self.scroll_layout.addWidget(separator)
 
     def ouvrir_lien(self, url):
-        webbrowser.open(url)
+        """
+        Au lieu d'ouvrir l'URL dans le navigateur externe,
+        cette méthode crée une nouvelle instance de notre navigateur intégré,
+        charge l'URL et l'affiche.
+        """
+        # Créer une nouvelle instance du navigateur intégré
+        browser = WebBrowser(parent=self)
+        # Charger l'URL dans la vue web du navigateur
+        browser.browser.setUrl(QUrl(url))
+        browser.show()
 
 
 if __name__ == "__main__":
