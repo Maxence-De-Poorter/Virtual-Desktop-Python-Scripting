@@ -6,6 +6,7 @@ from src.terminal import TerminalButton
 from src.chatbot import ChatbotButton
 from src.browser import BrowserButton
 from src.flux_rss import FluxRSSButton
+from src.realtime_graph import RealTimeGraphButton
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
@@ -40,6 +41,9 @@ class TaskBar(QWidget):
 
         self.fluxRSS_button = FluxRSSButton(self)
         layout.addWidget(self.fluxRSS_button)
+
+        self.realTimeGraph_button = RealTimeGraphButton(self)
+        layout.addWidget(self.realTimeGraph_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
