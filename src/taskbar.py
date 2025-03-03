@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QPushButton
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem,  QSizePolicy, QPushButton
 from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
@@ -11,6 +11,7 @@ from src.agenda import AgendaButton
 from src.notes import NotesButton
 from src.galery import GalleryButton  # Importe le bouton de la galerie
 from src.video import VideoPlayerButton  # Importe le bouton du lecteur vidéo
+
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
