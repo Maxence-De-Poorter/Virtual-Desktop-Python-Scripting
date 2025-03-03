@@ -8,7 +8,8 @@ from src.browser import BrowserButton
 from src.flux_rss import FluxRSSButton
 from src.realtime_graph import RealTimeGraphButton
 from src.agenda import AgendaButton
-from src.notes import NotesButton  # Importe le bouton des notes
+from src.notes import NotesButton
+from src.video import VideoPlayerButton  # Importe le bouton du lecteur vidéo
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
@@ -54,6 +55,9 @@ class TaskBar(QWidget):
         self.notes_button = NotesButton(self)  # Ajoute le bouton des notes
         layout.addWidget(self.notes_button)
 
+        self.video_player_button = VideoPlayerButton(self)  # Ajoute le bouton du lecteur vidéo
+        layout.addWidget(self.video_player_button)
+
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(spacer)
@@ -85,5 +89,3 @@ class TaskBar(QWidget):
         """Ferme toutes les applications ouvertes."""
         for window in self.parent().open_windows:
             window.close()
-
-# Assurez-vous que chaque fenêtre ouverte est ajoutée à la liste `open_windows` de la fenêtre principale.
