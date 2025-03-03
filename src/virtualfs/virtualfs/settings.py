@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'files',
     'agenda',
     'notes',
+    'gallery',
 ]
 
 MIDDLEWARE = [
