@@ -24,3 +24,8 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+6. Se connecter
+````aiignore
+username: demo
+password: Azerty!12345#
+````
