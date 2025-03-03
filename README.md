@@ -22,7 +22,7 @@ pip install -r requirements.txt
 ```
 5. Exécuter le projet.
 ```bash
-python main.py
+python -m src.main
 ```
 6. Se connecter
 ````aiignore
