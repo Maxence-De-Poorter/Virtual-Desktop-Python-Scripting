@@ -51,7 +51,6 @@ class AgendaButton(QPushButton):
             parent_window.agenda_window = agenda
             parent_window.open_windows.append(agenda)
             agenda.show()
-
 class AgendaWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -62,7 +61,7 @@ class AgendaWindow(QWidget):
         # Fond de la fenêtre avec un style plus esthétique
         self.setStyleSheet("""
             AgendaWindow {
-                background-color: #F0F0F0;
+                background-color: #F0F0F0;  /* Assurez-vous que le fond n'est pas transparent */
                 border: 1px solid #B0B0B0;
                 border-radius: 10px;
             }
@@ -101,15 +100,15 @@ class AgendaWindow(QWidget):
                 border-radius: 5px;
             }
             CloseButton {
-                background: transparent;
-                color: black;
+                background-color: red;
+                color: white;
                 font-size: 18px;
                 font-weight: bold;
                 border: none;
                 border-radius: 10px;
             }
             CloseButton:hover {
-                background-color: red;
+                background-color: darkred;
                 color: white;
             }
         """)
@@ -126,20 +125,7 @@ class AgendaWindow(QWidget):
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.close_button = QPushButton("✖")
         self.close_button.setFixedSize(40, 30)
-        self.close_button.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: black;
-                font-size: 18px;
-                font-weight: bold;
-                border: none;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: red;
-                color: white;
-            }
-        """)
+        self.close_button.setObjectName("CloseButton")
         self.close_button.clicked.connect(self.close)
         self.title_bar.addWidget(self.title_label)
         self.title_bar.addStretch()

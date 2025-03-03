@@ -27,6 +27,7 @@ class TaskBar(QWidget):
         layout.setSpacing(15)
 
         self.start_button = StartButton()
+        self.start_button.clicked.connect(self.close_all_applications)  # Connecte au bouton pour fermer toutes les applications
         layout.addWidget(self.start_button)
 
         self.file_explorer_button = FileExplorerButton(self)
@@ -79,3 +80,10 @@ class TaskBar(QWidget):
         """ Ajuste la largeur de la barre des tâches lors du redimensionnement de la fenêtre. """
         self.setGeometry(0, self.parent().height() - 50, self.parent().width(), 50)
         super().resizeEvent(event)
+
+    def close_all_applications(self):
+        """Ferme toutes les applications ouvertes."""
+        for window in self.parent().open_windows:
+            window.close()
+
+# Assurez-vous que chaque fenêtre ouverte est ajoutée à la liste `open_windows` de la fenêtre principale.

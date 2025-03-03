@@ -28,15 +28,16 @@ class BrowserButton(QPushButton):
         self.clicked.connect(self.open_browser)
 
     def open_browser(self):
-        """Ouvre une nouvelle instance du navigateur."""
-        print("[DEBUG] Ouverture du Navigateur Web.")
+        """Ouvre ou ferme l'instance du navigateur."""
         parent_window = self.window()
-        if not hasattr(parent_window, "open_windows"):
-            parent_window.open_windows = []
 
-        browser = WebBrowser(parent_window)
-        parent_window.open_windows.append(browser)
-        browser.show()
+        if hasattr(parent_window, 'web_browser_window') and parent_window.web_browser_window.isVisible():
+            parent_window.web_browser_window.close()
+        else:
+            web_browser = WebBrowser(parent_window)
+            parent_window.web_browser_window = web_browser
+            parent_window.open_windows.append(web_browser)
+            web_browser.show()
 
 class WebBrowser(QWidget):
     def __init__(self, parent=None):
@@ -120,6 +121,10 @@ class WebBrowser(QWidget):
 
         self.load_bookmarks()
 
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
+
     def add_bookmark(self):
         """Ajoute l'URL actuelle aux signets."""
         url = self.browser.url().toString()
@@ -152,3 +157,26 @@ class WebBrowser(QWidget):
 
         self.animation.start()
         self.is_menu_visible = not self.is_menu_visible
+
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = WebBrowser()
+    window.show()
+    sys.exit(app.exec())

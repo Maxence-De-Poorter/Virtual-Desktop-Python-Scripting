@@ -1,8 +1,6 @@
 import os
 import sys
 import feedparser
-# On n'utilise plus webbrowser.open pour ouvrir l'article dans le navigateur externe
-# On va utiliser notre navigateur intégré.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QFrame, QLabel, QPushButton, QHBoxLayout, QApplication
 )
@@ -10,8 +8,7 @@ from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QIcon
 
 # Importez votre classe WebBrowser depuis le module approprié.
-# Remplacez "browser" par le nom de votre module qui contient la classe WebBrowser.
-from src.browser import WebBrowser  
+from src.browser import WebBrowser
 
 class FluxRSSButton(QPushButton):
     def __init__(self, parent=None):
@@ -34,16 +31,16 @@ class FluxRSSButton(QPushButton):
         self.clicked.connect(self.open_fluxRSS)
 
     def open_fluxRSS(self):
-        """Ouvre une nouvelle instance de l'explorateur de fichiers."""
-        print("[DEBUG] Ouverture Explorateur Virtuel.")
+        """Ouvre ou ferme l'instance de l'explorateur de flux RSS."""
         parent_window = self.window()
-        if not hasattr(parent_window, "open_windows"):
-            parent_window.open_windows = []
 
-        fluxRSS = FluxRSS(parent_window)
-        parent_window.open_windows.append(fluxRSS)
-        fluxRSS.show()
-
+        if hasattr(parent_window, 'flux_rss_window') and parent_window.flux_rss_window.isVisible():
+            parent_window.flux_rss_window.close()
+        else:
+            fluxRSS = FluxRSS(parent_window)
+            parent_window.flux_rss_window = fluxRSS
+            parent_window.open_windows.append(fluxRSS)
+            fluxRSS.show()
 
 class FluxRSS(QWidget):
     def __init__(self, parent=None):
@@ -110,6 +107,10 @@ class FluxRSS(QWidget):
 
         self.charger_flux()
 
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
+
     def charger_flux(self):
         # Nettoyer le contenu précédent
         while self.scroll_layout.count():
@@ -142,7 +143,6 @@ class FluxRSS(QWidget):
         description_label.setStyleSheet("font-size: 13px; color: #cccccc;")
 
         bouton_lire = QPushButton("Lire l’article")
-        # Modification ici : on ouvre l'article dans notre navigateur intégré
         bouton_lire.clicked.connect(lambda checked=False, url=lien: self.ouvrir_lien(url))
 
         carte_layout.addWidget(titre_label)
@@ -174,6 +174,22 @@ class FluxRSS(QWidget):
         browser.browser.setUrl(QUrl(url))
         browser.show()
 
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

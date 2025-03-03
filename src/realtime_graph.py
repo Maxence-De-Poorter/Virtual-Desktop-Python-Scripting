@@ -30,15 +30,16 @@ class RealTimeGraphButton(QPushButton):
         self.clicked.connect(self.open_realTimeGraph)
 
     def open_realTimeGraph(self):
-        """Ouvre une nouvelle instance du graphique temps réel."""
-        print("[DEBUG] Ouverture Graphique Temps Réel.")
+        """Ouvre ou ferme l'instance du graphique temps réel."""
         parent_window = self.window()
-        if not hasattr(parent_window, "open_windows"):
-            parent_window.open_windows = []
 
-        realTimeGraph = RealTimeGraph(parent_window)
-        parent_window.open_windows.append(realTimeGraph)
-        realTimeGraph.show()
+        if hasattr(parent_window, 'real_time_graph') and parent_window.real_time_graph.isVisible():
+            parent_window.real_time_graph.close()
+        else:
+            realTimeGraph = RealTimeGraph(parent_window)
+            parent_window.real_time_graph = realTimeGraph
+            parent_window.open_windows.append(realTimeGraph)
+            realTimeGraph.show()
 
 class RealTimeGraph(QWidget):
     def __init__(self, parent=None):
@@ -155,6 +156,10 @@ class RealTimeGraph(QWidget):
         self.data_y = []
         self.curve = self.plot_widget.plot([], [], pen=pg.mkPen('#00FFCC', width=3))
 
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
+
     def start_update(self):
         self.data_x = []
         self.data_y = []
@@ -174,6 +179,28 @@ class RealTimeGraph(QWidget):
                 self.footer.setText(f"Dernière mise à jour : {QDateTime.currentDateTime().toString('HH:mm:ss')}")
         except Exception as e:
             print(f"Erreur lors de la récupération ou mise à jour des données : {e}")
+
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
+
+    def closeEvent(self, event):
+        """Arrête la mise à jour des données et ferme la fenêtre."""
+        self.timer.stop()
+        super().closeEvent(event)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -25,16 +25,18 @@ class TerminalButton(QPushButton):
             }
         """)
         self.clicked.connect(self.open_terminal)
-    
+
     def open_terminal(self):
-        """Ouvre une nouvelle instance du terminal."""
-        print("[DEBUG] Ouverture du Terminal.")
+        """Ouvre ou ferme l'instance du terminal."""
         parent_window = self.window()
-        if not hasattr(parent_window, "open_windows"):
-            parent_window.open_windows = []
-        terminal = TerminalWidget(parent_window)
-        parent_window.open_windows.append(terminal)
-        terminal.show()
+
+        if hasattr(parent_window, 'terminal_window') and parent_window.terminal_window.isVisible():
+            parent_window.terminal_window.close()
+        else:
+            terminal = TerminalWidget(parent_window)
+            parent_window.terminal_window = terminal
+            parent_window.open_windows.append(terminal)
+            terminal.show()
 
 class TerminalWidget(QWidget):
     def __init__(self, parent=None):
@@ -42,57 +44,61 @@ class TerminalWidget(QWidget):
         # Supprimer la bordure native pour implémenter notre propre en-tête
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
         self.resize(800, 600)
-        
+
         # Layout principal
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # En-tête personnalisé
         self.title_bar = QWidget(self)
         self.title_bar.setStyleSheet("background-color: #444444;")
         self.title_layout = QHBoxLayout(self.title_bar)
         self.title_layout.setContentsMargins(5, 5, 5, 5)
-        
+
         # Titre de la fenêtre
         self.title_label = QLabel("Invite de commande", self.title_bar)
         self.title_label.setStyleSheet("color: white; font-size: 16px;")
         self.title_layout.addWidget(self.title_label)
         self.title_layout.addStretch()
-        
+
         # Bouton de fermeture (croix)
         self.close_button = QPushButton("❌", self.title_bar)
         self.close_button.setFixedSize(30, 30)
         self.close_button.setStyleSheet("border: none; background: transparent; color: white; font-size: 16px;")
         self.close_button.clicked.connect(self.close)
         self.title_layout.addWidget(self.close_button)
-        
+
         # Ajout de l'en-tête dans le layout principal
         self.layout.addWidget(self.title_bar)
-        
+
         # Layout pour la zone terminal (sortie et saisie)
         self.terminal_layout = QVBoxLayout()
         self.terminal_layout.setContentsMargins(10, 10, 10, 10)
-        
+
         # Zone d'affichage de la sortie (lecture seule)
         self.output_area = QPlainTextEdit(self)
         self.output_area.setReadOnly(True)
         self.terminal_layout.addWidget(self.output_area)
-        
+
         # Ligne de saisie pour entrer les commandes
         self.input_line = QLineEdit(self)
         self.input_line.returnPressed.connect(self.execute_command)
         self.terminal_layout.addWidget(self.input_line)
-        
+
         # Ajout du layout terminal dans le layout principal
         self.layout.addLayout(self.terminal_layout)
-        
+
         # Initialisation de QProcess pour lancer l'invite de commande Windows
         self.process = QProcess(self)
         # Fusionner stdout et stderr pour une lecture simplifiée
         self.process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
         self.process.readyReadStandardOutput.connect(self.handle_stdout)
         self.process.start("cmd.exe")
-        
+
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
+
     def execute_command(self):
         """Exécute la commande saisie dans la ligne d'entrée."""
         command = self.input_line.text().strip()
@@ -113,15 +119,32 @@ class TerminalWidget(QWidget):
             # Envoie la commande au process suivie d'un saut de ligne
             self.process.write((command + "\n").encode("utf-8"))
             self.input_line.clear()
-            
+
     def handle_stdout(self):
         """Gère et affiche la sortie standard du process."""
         data = self.process.readAllStandardOutput()
         output = bytes(data).decode("utf-8", errors="replace")
         self.output_area.appendPlainText(output)
-        
-    def handle_stderr(self):
-        """Gère et affiche la sortie d'erreur du process."""
-        data = self.process.readAllStandardError()
-        output = bytes(data).decode("utf-8", errors="replace")
-        self.output_area.appendPlainText(output)
+
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = TerminalWidget()
+    window.show()
+    sys.exit(app.exec())

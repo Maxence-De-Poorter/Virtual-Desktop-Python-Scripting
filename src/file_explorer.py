@@ -35,15 +35,16 @@ class FileExplorerButton(QPushButton):
         self.clicked.connect(self.open_explorer)
 
     def open_explorer(self):
-        """Ouvre une nouvelle instance de l'explorateur de fichiers."""
-        print("[DEBUG] Ouverture Explorateur Virtuel.")
+        """Ouvre ou ferme l'instance de l'explorateur de fichiers."""
         parent_window = self.window()
-        if not hasattr(parent_window, "open_windows"):
-            parent_window.open_windows = []
 
-        explorer = FileExplorer(parent_window)
-        parent_window.open_windows.append(explorer)
-        explorer.show()
+        if hasattr(parent_window, 'file_explorer_window') and parent_window.file_explorer_window.isVisible():
+            parent_window.file_explorer_window.close()
+        else:
+            explorer = FileExplorer(parent_window)
+            parent_window.file_explorer_window = explorer
+            parent_window.open_windows.append(explorer)
+            explorer.show()
 
 class FileExplorer(QWidget):
     def __init__(self, parent=None):
@@ -56,7 +57,7 @@ class FileExplorer(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- En-tête personnalisé (même style que le chatbot) ---
+        # --- En-tête personnalisé ---
         self.title_bar = QWidget(self)
         self.title_bar.setStyleSheet("background-color: #444444;")
         self.title_layout = QHBoxLayout(self.title_bar)
@@ -108,6 +109,10 @@ class FileExplorer(QWidget):
         # Initialisation du dossier courant (Root)
         self.current_folder, _ = Folder.objects.get_or_create(name="Root", parent=None)
         self.refresh_files()
+
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
 
     def refresh_files(self):
         """Rafraîchir la liste des fichiers et dossiers et mettre à jour le breadcrumb."""
@@ -212,6 +217,23 @@ class FileExplorer(QWidget):
                     self.rename_file_context(item)
                 elif action == delete_action:
                     self.delete_file_context(item)
+
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -33,14 +33,16 @@ class ChatbotButton(QPushButton):
         self.clicked.connect(self.open_chatbot)
 
     def open_chatbot(self):
-        """Ouvre une nouvelle instance du chatbot."""
-        print("[DEBUG] Ouverture du Chatbot.")
+        """Ouvre ou ferme l'instance du chatbot."""
         parent_window = self.window()
-        if not hasattr(parent_window, "open_windows"):
-            parent_window.open_windows = []
-        chatbot = ChatbotWidget(parent_window)
-        parent_window.open_windows.append(chatbot)
-        chatbot.show()
+
+        if hasattr(parent_window, 'chatbot_window') and parent_window.chatbot_window.isVisible():
+            parent_window.chatbot_window.close()
+        else:
+            chatbot = ChatbotWidget(parent_window)
+            parent_window.chatbot_window = chatbot
+            parent_window.open_windows.append(chatbot)
+            chatbot.show()
 
 class ChatbotWidget(QWidget):
     def __init__(self, parent=None):
@@ -94,6 +96,10 @@ class ChatbotWidget(QWidget):
         # Historique des conversations
         self.conversation_history = [{"role": "system", "content": "Tu es un assistant utile."}]
 
+        # Variables pour le déplacement de la fenêtre
+        self._drag_start_position = None
+        self._drag_offset = None
+
     def send_message(self):
         """Gère l'envoi des messages et l'affichage des réponses du chatbot."""
         user_message = self.input_line.text().strip()
@@ -127,3 +133,26 @@ class ChatbotWidget(QWidget):
             return bot_reply
         except Exception as e:
             return f"Erreur: {str(e)}"
+
+    def mousePressEvent(self, event):
+        """Gère l'événement de pression de la souris pour déplacer la fenêtre."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.geometry().contains(event.pos()):
+            self._drag_start_position = event.globalPosition().toPoint()
+            self._drag_offset = self.pos() - self._drag_start_position
+
+    def mouseMoveEvent(self, event):
+        """Gère l'événement de mouvement de la souris pour déplacer la fenêtre."""
+        if self._drag_start_position and event.buttons() == Qt.MouseButton.LeftButton:
+            new_pos = event.globalPosition().toPoint() + self._drag_offset
+            self.move(new_pos)
+
+    def mouseReleaseEvent(self, event):
+        """Gère l'événement de relâchement de la souris."""
+        self._drag_start_position = None
+        self._drag_offset = None
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = ChatbotWidget()
+    window.show()
+    sys.exit(app.exec())
