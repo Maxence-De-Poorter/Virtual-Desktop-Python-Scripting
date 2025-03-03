@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSpacerItem, QSizePolicy, QPushButton
 from PyQt6.QtCore import Qt, QTimer, QTime
 from src.start_menu import StartButton
 from src.file_explorer import FileExplorerButton
@@ -7,11 +7,13 @@ from src.chatbot import ChatbotButton
 from src.browser import BrowserButton
 from src.flux_rss import FluxRSSButton
 from src.realtime_graph import RealTimeGraphButton
+from src.agenda import AgendaButton
+from src.notes import NotesButton  # Importe le bouton des notes
 
 class TaskBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
         self.setStyleSheet("""
             TaskBar {
                 background-color: rgba(34, 34, 34, 0.85); /* Fond unifié */
@@ -44,6 +46,12 @@ class TaskBar(QWidget):
 
         self.realTimeGraph_button = RealTimeGraphButton(self)
         layout.addWidget(self.realTimeGraph_button)
+
+        self.agenda_button = AgendaButton(self)
+        layout.addWidget(self.agenda_button)
+
+        self.notes_button = NotesButton(self)  # Ajoute le bouton des notes
+        layout.addWidget(self.notes_button)
 
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)

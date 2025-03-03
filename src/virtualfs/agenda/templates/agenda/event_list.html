@@ -1,0 +1,22 @@
+<!-- templates/agenda/event_list.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
+</head>
+<body>
+    <div id='calendar'></div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          events: '{% url "event_feed" %}'  // URL pour récupérer les événements via AJAX
+        });
+        calendar.render();
+      });
+    </script>
+</body>
+</html>

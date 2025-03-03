@@ -1,0 +1,14 @@
+<!-- templates/agenda/add_task.html -->
+<h1>Ajouter une tâche</h1>
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="title">Titre de la tâche:</label>
+        <input type="text" name="title" class="form-control" required>
+        <label for="description">Description de la tâche:</label>
+        <textarea name="description" class="form-control" required></textarea>
+        <label for="due_date">Date d'échéance:</label>
+        <input type="datetime-local" name="due_date" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Ajouter</button>
+</form>

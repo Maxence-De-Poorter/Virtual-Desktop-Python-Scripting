@@ -1,0 +1,16 @@
+<!-- templates/agenda/add_event.html -->
+<h1>Ajouter un événement</h1>
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="title">Titre de l'événement:</label>
+        <input type="text" name="title" class="form-control" required>
+        <label for="description">Description de l'événement:</label>
+        <textarea name="description" class="form-control" required></textarea>
+        <label for="start_time">Date et heure de début:</label>
+        <input type="datetime-local" name="start_time" class="form-control" required>
+        <label for="end_time">Date et heure de fin:</label>
+        <input type="datetime-local" name="end_time" class="form-control" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Ajouter</button>
+</form>
