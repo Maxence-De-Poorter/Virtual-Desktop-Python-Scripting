@@ -5,11 +5,9 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt, QTimer
 import requests
 from src.taskbar import TaskBar
-from src.galery import OnlinePhotoGallery
 
 
 METEOCONCEPT_API_KEY = "6c0ee281f63a1d2e57da3f9ab4ddbdcf33122bbb915e5a8cf29f9b81799082c8"
-UNSPLASH_ACCESS_KEY = "E9RkwA34EG1TR_xhR4nlN6-gIfcs11r4OgjukJVQGRo"
 
 def get_city_insee(city, api_key):
     location_url = f"https://api.meteo-concept.com/api/location/cities?token={api_key}&search={city}"
@@ -123,7 +121,6 @@ class BureauVirtuel(QMainWindow):
 
         data = response.json()
         return [photo['urls']['regular'] for photo in data]
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
