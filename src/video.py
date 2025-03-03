@@ -17,14 +17,8 @@ class VideoPlayerButton(QPushButton):
         self.setIconSize(self.size())
 
         self.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background: transparent;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.2);
-            }
+            QPushButton { border: none; background: transparent; }
+            QPushButton:hover { background-color: rgba(255, 255, 255, 0.1); }
         """)
 
         self.clicked.connect(self.open_video_player)

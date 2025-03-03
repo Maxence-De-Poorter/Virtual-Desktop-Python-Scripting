@@ -13,18 +13,12 @@ class NotesButton(QPushButton):
     def __init__(self, parent=None):
         super().__init__("", parent)
         self.setFixedSize(40, 40)
-        icon_path = os.path.join(os.path.dirname(__file__), "../assets/notes.png")
+        icon_path = os.path.join(os.path.dirname(__file__), "../assets/note_icon.png")
         self.setIcon(QIcon(icon_path))
         self.setIconSize(QSize(40, 40))
         self.setStyleSheet("""
-            QPushButton {
-                background-color: #FFA500;
-                border: none;
-                border-radius: 10px;
-            }
-            QPushButton:hover {
-                background-color: #e0ac0f;
-            }
+            QPushButton { border: none; background: transparent; }
+            QPushButton:hover { background-color: rgba(255, 255, 255, 0.1); }
         """)
         self.clicked.connect(self.open_notes)
 

@@ -9,6 +9,7 @@ from src.flux_rss import FluxRSSButton
 from src.realtime_graph import RealTimeGraphButton
 from src.agenda import AgendaButton
 from src.notes import NotesButton
+from src.galery import GalleryButton  # Importe le bouton de la galerie
 from src.video import VideoPlayerButton  # Importe le bouton du lecteur vidéo
 
 class TaskBar(QWidget):
@@ -54,6 +55,9 @@ class TaskBar(QWidget):
 
         self.notes_button = NotesButton(self)  # Ajoute le bouton des notes
         layout.addWidget(self.notes_button)
+
+        self.gallery_button = GalleryButton(self)  # Ajoute le bouton des notes
+        layout.addWidget(self.gallery_button)
 
         self.video_player_button = VideoPlayerButton(self)  # Ajoute le bouton du lecteur vidéo
         layout.addWidget(self.video_player_button)
