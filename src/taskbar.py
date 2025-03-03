@@ -16,9 +16,12 @@ class TaskBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        # Ajouter un fond opaque à la barre des tâches
         self.setStyleSheet("""
             TaskBar {
-                background-color: rgba(34, 34, 34, 0.85); /* Fond unifié */
+                background-color: rgba(34, 34, 34, 0.85); /* Fond unifié avec opacité */
+                color: white; /* Couleur du texte */
+                font-size: 14px; /* Taille de la police */
             }
         """)
 
@@ -56,7 +59,7 @@ class TaskBar(QWidget):
         self.notes_button = NotesButton(self)  # Ajoute le bouton des notes
         layout.addWidget(self.notes_button)
 
-        self.gallery_button = GalleryButton(self)  # Ajoute le bouton des notes
+        self.gallery_button = GalleryButton(self)  # Ajoute le bouton de la galerie
         layout.addWidget(self.gallery_button)
 
         self.video_player_button = VideoPlayerButton(self)  # Ajoute le bouton du lecteur vidéo
